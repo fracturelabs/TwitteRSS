@@ -1,0 +1,19 @@
+{
+	"account": {
+		"consumer_key": "<get from Twitter>",
+		"consumer_secret": "<get from Twitter>",
+		"access_token": "<get from Twitter>",
+		"access_token_secret": "<get from Twitter>"
+	},
+
+	"preferences": {
+		"max_items": 50,
+		"bucket": "<get from S3>",
+		"folder": "<get from S3>"
+	},
+
+	"lists": [
+		"<list 1>",
+		"<list 2>"
+	]
+}
