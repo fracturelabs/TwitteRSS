@@ -1,19 +1,32 @@
 {
-	"account": {
+	"twitter": {
 		"consumer_key": "<get from Twitter>",
 		"consumer_secret": "<get from Twitter>",
 		"access_token": "<get from Twitter>",
 		"access_token_secret": "<get from Twitter>"
 	},
 
+	"s3": {
+		"bucket": "<get from S3>",
+		"folder": "<get from S3>",
+		"filename_nonce": "<anything will do - only for uniqueness>"
+	},
+
 	"preferences": {
 		"max_items": 50,
-		"bucket": "<get from S3>",
-		"folder": "<get from S3>"
+		"exclude_retweets": "false",
+		"require_retweets": "false",
+		"exclude_quotes": "false",
+		"require_quotes": "false",
+		"exclude_tweets_with_media": "false",
+		"require_tweets_with_media": "false",
+		"exclude_tweets_with_urls": "false",
+		"require_tweets_with_urls": "false"
 	},
 
 	"lists": [
 		"<list 1>",
-		"<list 2>"
+		"<list 2>",
+		"<list 3>"
 	]
 }
