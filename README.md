@@ -61,6 +61,7 @@ Upload the file to AWS Lambda and set the handler to `twitterss.twitterss_handle
 
 The feature set is pretty low at this time.  Mainly, this package will:
 * Check the specified Twitter lists for new tweets
+* Filter to exclude or require any combination of: retweets or quotes. Media and URL filtering to come later.
 * Create an RSS feed based on those tweets
 
 ### Areas for Improvement
