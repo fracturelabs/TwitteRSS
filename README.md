@@ -67,8 +67,7 @@ The feature set is pretty low at this time.  Mainly, this package will:
 
 There are probably more things than this, but at least the following could use some work:
 * Only request tweets that are new since the last run
-* Handle retweets and retweets with comments better
-* Add images
+* Add filtering by the presence (or lack of) media or urls
 
 ## Contributing
 
