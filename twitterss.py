@@ -59,13 +59,17 @@ def twitterss_handler(event, context):
     rss_key = hash_object.hexdigest()
     file_name = rss_key + ".xml"
 
-    rss_items = []
+    rss_items = {}
 
     # Get list timeline
     for list_name in lists:
         for tweet in tweepy.Cursor(api.list_timeline, user.screen_name,
                                    list_name,
                                    tweet_mode="extended").items(max_items):
+
+            # Don't store duplicates
+            if tweet.id_str in rss_items.keys():
+                continue
 
             tweet_is_retweet = hasattr(tweet, 'retweeted_status')
             tweet_is_quote = tweet.is_quote_status
@@ -172,7 +176,7 @@ def twitterss_handler(event, context):
                 enclosure=media
             )
 
-            rss_items.append(item)
+            rss_items[tweet_id] = item
 
     # Create the feed
     feed = rfeed.Feed(
@@ -181,7 +185,7 @@ def twitterss_handler(event, context):
         description="{}'s TwitteRSS Feed".format(user.screen_name),
         language="en-US",
         lastBuildDate=datetime.datetime.now(),
-        items=rss_items)
+        items=rss_items.values())
 
     # Save to S3
     s3 = boto3.resource("s3")
@@ -189,8 +193,11 @@ def twitterss_handler(event, context):
         Key=folder + "/" + file_name,
         Body=feed.rss(),
         ACL='public-read',
-        ContentType='text/xml')
+        ContentType='application/xml',
+        CacheControl='max-age=300',
+        ContentEncoding='utf-8')
 
-    print "Done saving to S3: {}{}".format(rss_base_url, file_name)
+    print "Saved {} records to: {}{}".format(
+        len(rss_items), rss_base_url, file_name)
 
     return "DONE"
