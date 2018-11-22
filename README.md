@@ -42,6 +42,8 @@ You also need to setup and assign a new role that will allow Lambda to upload fi
 ```
 ## Building the Package
 
+This project requires at least Python v3.6.
+
 The following commands will
 * install the required packages to the project root (needed for AWS Lambda)
 * create a ZIP package for deployment. Run the following from the project directory:
@@ -61,14 +63,16 @@ Upload the file to AWS Lambda and set the handler to `twitterss.twitterss_handle
 
 The feature set is pretty low at this time.  Mainly, this package will:
 * Check the specified Twitter lists for new tweets
-* Filter to exclude or require any combination of: retweets or quotes. Media and URL filtering to come later.
+* Filter to exclude or require any combination of: retweets, quotes, and media.  URL filtering to come later.
 * Create an RSS feed based on those tweets
+* Supports creating multiple feeds based upon multiple lists
 
 ### Areas for Improvement
 
 There are probably more things than this, but at least the following could use some work:
 * Only request tweets that are new since the last run
-* Add filtering by the presence (or lack of) media or urls
+* Add filtering by the presence (or lack of) urls
+* Try to read original tweets from retweets and quotes to show the html inline instead of just a link
 
 ## Contributing
 
