@@ -9,7 +9,7 @@
 	"s3": {
 		"bucket": "<get from S3>",
 		"folder": "<get from S3>",
-		"filename_nonce": "<anything will do - only for uniqueness>"
+		"filename_salt": "<anything will do - only for uniqueness>"
 	},
 
 	"preferences": {
@@ -24,9 +24,42 @@
 		"require_tweets_with_urls": "false"
 	},
 
-	"lists": [
-		"<list 1>",
-		"<list 2>",
-		"<list 3>"
+	"feeds": [
+		{
+			"title": "Tweets from ABC and DEF Lists",
+			"lists": [
+				"ABC",
+				"DEF"
+			],
+			"preferences": {
+				"max_items": 50,
+				"exclude_retweets": "false",
+				"require_retweets": "false",
+				"exclude_quotes": "false",
+				"require_quotes": "false",
+				"exclude_tweets_with_media": "false",
+				"require_tweets_with_media": "false",
+				"exclude_tweets_with_urls": "false",
+				"require_tweets_with_urls": "false"
+			}
+		},
+		{
+			"title": "Tweets from XYZ List",
+			"lists": [
+				"XYZ"
+			],
+			"preferences": {
+				"max_items": 50,
+				"exclude_retweets": "false",
+				"require_retweets": "false",
+				"exclude_quotes": "false",
+				"require_quotes": "false",
+				"exclude_tweets_with_media": "false",
+				"require_tweets_with_media": "false",
+				"exclude_tweets_with_urls": "false",
+				"require_tweets_with_urls": "false"
+			}
+		}
 	]
 }
+

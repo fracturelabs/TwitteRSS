@@ -9,6 +9,114 @@ import tweepy
 from distutils.util import strtobool
 
 
+class TweetArticle(object):
+    def __init__(self, tweet):
+        self._tweet = tweet
+        self._is_retweet = hasattr(tweet, 'retweeted_status')
+        self._is_quote = tweet.is_quote_status
+
+        # Quoted Retweet
+        if self._is_quote and self._is_retweet:
+            self._title_prefix = 'Quoted RT from @'
+            original_tweet = tweet.retweeted_status.quoted_status
+
+            self._body = (f"<p>{tweet.retweeted_status.full_text}</p>"
+                          f"<p>*** Quoted @{original_tweet.user.screen_name} "
+                          f"({original_tweet.user.name}) ***</p>"
+                          f"<p>{original_tweet.full_text}</p>"
+                          .replace('\n', '\n<br />'))
+
+        # Quote
+        elif self._is_quote and not self._is_retweet:
+            self._title_prefix = 'Quote from @'
+            original_tweet = tweet.quoted_status
+
+            self._body = (f"<p>{tweet.full_text}</p>"
+                          f"<p>*** Quoted @{original_tweet.user.screen_name} "
+                          f"({original_tweet.user.name}) ***</p>"
+                          f"<p>{original_tweet.full_text}</p>"
+                          .replace('\n', '\n<br />'))
+
+        # Retweet
+        elif self._is_retweet and not self._is_quote:
+            self._title_prefix = 'RT from @'
+            original_tweet = tweet.retweeted_status
+
+            self._body = (f"<p><i>Originally tweeted by "
+                          f"@{original_tweet.user.screen_name} "
+                          f"({original_tweet.user.name})</i></p>"
+                          f"<p>{original_tweet.full_text}</p>"
+                          .replace('\n', '\n<br />'))
+
+        # Regular
+        else:
+            self._title_prefix = 'Tweet from @'
+            self._body = tweet.full_text.replace('\n', '\n<br />')
+            original_tweet = tweet
+
+        if 'media' in original_tweet.entities:
+            self._media_url = (
+                original_tweet.entities['media'][0]['media_url_https'])
+        else:
+            self._media_url = None
+
+    @property
+    def id(self):
+        return self._tweet.id_str
+
+    @property
+    def url(self):
+        return ("https://twitter.com/"
+                f"{self.author_handle}/status/{self.id}")
+
+    @property
+    def created_at(self):
+        return self._tweet.created_at
+
+    @property
+    def author_handle(self):
+        return self._tweet.author.screen_name
+
+    @property
+    def author_name(self):
+        return self._tweet.author.name
+
+    @property
+    def title(self):
+        return f"{self._title_prefix}{self.author_handle}"
+
+    @property
+    def body(self):
+        return self._body
+
+    @property
+    def media_url(self):
+        return self._media_url
+
+    @property
+    def is_retweet(self):
+        return self._is_retweet
+
+    @property
+    def is_quote(self):
+        return self._is_quote
+
+    def __repr__(self):
+        return (
+            'TweetArticle:\n'
+            f'\tid={self.id}\n'
+            f'\turl={self.url}\n'
+            f'\tcreated_at={self.created_at}\n'
+            f'\tauthor_handle={self.author_handle}\n'
+            f'\tauthor_name={self.author_name}\n'
+            f'\ttitle={self.title}\n'
+            f'\tbody={self.body}\n'
+            f'\tmedia_url={self.media_url}\n'
+            f'\tis_retweet={self.is_retweet}\n'
+            f'\tis_quote={self.is_quote}\n'
+        )
+
+
 def twitterss_handler(event, context):
 
     with open('config.json', 'r') as f:
@@ -21,29 +129,10 @@ def twitterss_handler(event, context):
 
     bucket = config['s3']['bucket']
     folder = config['s3']['folder']
-    filename_nonce = config['s3']['filename_nonce']
-
-    max_items = config['preferences']['max_items']
-    exclude_retweets = bool(strtobool(
-        config['preferences']['exclude_retweets']))
-    require_retweets = bool(strtobool(
-        config['preferences']['require_retweets']))
-    exclude_quotes = bool(strtobool(
-        config['preferences']['exclude_quotes']))
-    require_quotes = bool(strtobool(
-        config['preferences']['require_quotes']))
-    exclude_tweets_with_media = bool(strtobool(
-        config['preferences']['exclude_tweets_with_media']))
-    require_tweets_with_media = bool(strtobool(
-        config['preferences']['require_tweets_with_media']))
-    exclude_tweets_with_urls = bool(strtobool(
-        config['preferences']['exclude_tweets_with_urls']))
-    require_tweets_with_urls = bool(strtobool(
-        config['preferences']['require_tweets_with_urls']))
-
+    filename_salt = config['s3']['filename_salt']
     rss_base_url = "https://s3.amazonaws.com/{}/{}/".format(bucket, folder)
 
-    lists = config['lists']
+    feeds = config['feeds']
 
     # Init API
     auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
@@ -52,152 +141,107 @@ def twitterss_handler(event, context):
 
     user = api.me()
 
-    # Create the RSS filename.  You can force a change by updating the nonce.
-    key = "{}-{}-{}-{}".format(user.id, user.screen_name,
-                               '-'.join(lists), filename_nonce)
-    hash_object = hashlib.sha256(key)
-    rss_key = hash_object.hexdigest()
-    file_name = rss_key + ".xml"
+    for feed in feeds:
+        print("Feed Title: {}".format(feed['title']))
 
-    rss_items = {}
+        max_items = feed['preferences']['max_items']
+        exclude_retweets = bool(strtobool(
+            feed['preferences']['exclude_retweets']))
+        require_retweets = bool(strtobool(
+            feed['preferences']['require_retweets']))
+        exclude_quotes = bool(strtobool(
+            feed['preferences']['exclude_quotes']))
+        require_quotes = bool(strtobool(
+            feed['preferences']['require_quotes']))
+        exclude_tweets_with_media = bool(strtobool(
+            feed['preferences']['exclude_tweets_with_media']))
+        require_tweets_with_media = bool(strtobool(
+            feed['preferences']['require_tweets_with_media']))
 
-    # Get list timeline
-    for list_name in lists:
-        for tweet in tweepy.Cursor(api.list_timeline, user.screen_name,
-                                   list_name,
-                                   tweet_mode="extended").items(max_items):
+        lists = feed['lists']
 
-            # Don't store duplicates
-            if tweet.id_str in rss_items.keys():
-                continue
+        # Create the RSS filename. Force a change by updating the salt.
+        key = f"{user.id}{user.screen_name}{''.join(lists)}{filename_salt}"
+        hash_object = hashlib.sha256(key.encode('utf-8'))
+        rss_key = hash_object.hexdigest()
+        file_name = rss_key + ".xml"
 
-            tweet_is_retweet = hasattr(tweet, 'retweeted_status')
-            tweet_is_quote = tweet.is_quote_status
-            tweet_media_url = None
+        rss_items = {}
 
-            if exclude_retweets and tweet_is_retweet:
-                continue
+        # Get list timeline
+        for list_name in lists:
+            tweets = tweepy.Cursor(api.list_timeline, user.screen_name,
+                                   list_name, tweet_mode="extended")
 
-            if require_retweets and not tweet_is_retweet:
-                continue
+            for tweet in tweets.items(max_items):
 
-            if exclude_quotes and tweet_is_quote:
-                continue
+                # Don't store duplicates
+                if tweet.id_str in rss_items.keys():
+                    continue
 
-            if require_quotes and not tweet_is_quote:
-                continue
+                tweet_article = TweetArticle(tweet)
 
-            # Retweets
-            if tweet_is_retweet:
-                tweet_title = "Retweet from @{}".format(
-                    tweet.author.screen_name)
-                tweet_id = tweet.id_str
-                tweet_text = tweet.retweeted_status.full_text.encode('utf-8')
-                tweet_author_handle = tweet.retweeted_status.user.screen_name
-                tweet_author_name = tweet.retweeted_status.user.name.encode(
-                    'utf-8')
-                tweet_url = "https://twitter.com/{}/status/{}".format(
-                        tweet_author_handle, tweet_id)
+                if exclude_retweets and tweet_article.is_retweet:
+                    continue
 
-                if 'media' in tweet.retweeted_status.entities:
-                    tweet_media_url = tweet.retweeted_status.entities[
-                            'media'][0]['media_url_https']
+                if require_retweets and not tweet_article.is_retweet:
+                    continue
 
-            # Quotes
-            if tweet_is_quote:
-                tweet_title = "Quote from @{}".format(tweet.author.screen_name)
-                tweet_id = tweet.id_str
+                if exclude_quotes and tweet_article.is_quote:
+                    continue
 
-                if tweet_is_retweet:
-                    tweet_text = "{}\n\n*** Quoted @{} ({}) ***\n\n{}".format(
-                        tweet.retweeted_status.full_text.encode('utf-8'),
-                        (tweet.retweeted_status.quoted_status
-                            .user.screen_name.encode('utf-8')),
-                        (tweet.retweeted_status.quoted_status
-                            .user.name.encode('utf-8')),
-                        (tweet.retweeted_status.quoted_status
-                            .full_text.encode('utf-8')))
+                if require_quotes and not tweet_article.is_quote:
+                    continue
 
-                    if 'media' in (tweet.retweeted_status
-                                   .quoted_status.entities):
-                        tweet_media_url = (
-                                tweet.retweeted_status.quoted_status
-                                .entities['media'][0]['media_url_https'])
+                if exclude_tweets_with_media and tweet_article.media_url:
+                    continue
 
+                if require_tweets_with_media and not tweet_article.media_url:
+                    continue
+
+                # print(tweet_article)
+
+                if tweet_article.media_url:
+                    tweet_media_type = mimetypes.guess_type(
+                        tweet_article.media_url)[0]
+
+                    media = rfeed.Enclosure(
+                        url=tweet_article.media_url,
+                        length=0,
+                        type=tweet_media_type)
                 else:
-                    tweet_text = "{}\n\n*** Quoted @{} ({}) ***\n\n{}".format(
-                        tweet.full_text.encode('utf-8'),
-                        tweet.quoted_status.user.screen_name.encode('utf-8'),
-                        tweet.quoted_status.user.name.encode('utf-8'),
-                        tweet.quoted_status.full_text.encode('utf-8'))
+                    media = None
 
-                    if 'media' in tweet.quoted_status.entities:
-                        tweet_media_url = (
-                            tweet.quoted_status.entities
-                            ['media'][0]['media_url_https'])
+                item = rfeed.Item(
+                    title=tweet_article.title,
+                    link=tweet_article.url,
+                    description=tweet_article.body,
+                    author=tweet_article.author_name,
+                    guid=rfeed.Guid(tweet_article.id, isPermaLink=False),
+                    pubDate=tweet_article.created_at,
+                    enclosure=media
+                )
 
-                tweet_author_handle = tweet.author.screen_name
-                tweet_author_name = tweet.author.name.encode('utf-8')
-                tweet_url = "https://twitter.com/{}/status/{}".format(
-                        tweet_author_handle, tweet_id)
+                rss_items[tweet_article.id] = item
 
-            # Regular tweet
-            if not tweet_is_retweet and not tweet_is_quote:
-                tweet_title = "Tweet from @{}".format(tweet.author.screen_name)
-                tweet_id = tweet.id_str
-                tweet_text = tweet.full_text.encode('utf-8')
-                tweet_author_handle = tweet.author.screen_name.encode('utf-8')
-                tweet_author_name = tweet.author.name.encode('utf-8')
-                tweet_url = "https://twitter.com/{}/status/{}".format(
-                        tweet_author_handle, tweet_id)
+        feed = rfeed.Feed(
+            title=feed['title'],
+            link=rss_base_url,
+            description="{}'s TwitteRSS Feed".format(user.screen_name),
+            language="en-US",
+            lastBuildDate=datetime.datetime.now(),
+            items=list(rss_items.values()))
 
-                if 'media' in tweet.entities:
-                    tweet_media_url = (
-                        tweet.entities['media'][0]['media_url_https'])
+        # Save to S3
+        s3 = boto3.resource("s3")
+        s3.Bucket(bucket).put_object(
+            Key=folder + "/" + file_name,
+            Body=feed.rss(),
+            ACL='public-read',
+            ContentType='application/xml',
+            CacheControl='max-age=300',
+            ContentEncoding='utf-8')
 
-            # print("TITLE: {}\nID: {}\nTEXT: {}\nAUTHOR: {}\nURL: {}\n".format(
-            #     tweet_title, tweet_id, tweet_text.replace('\n', '\n<br />'),
-            #     tweet_author_handle, tweet_url))
-
-            if tweet_media_url:
-                tweet_media_type = mimetypes.guess_type(tweet_media_url)[0]
-                media = rfeed.Enclosure(
-                    url=tweet_media_url, length=0, type=tweet_media_type)
-            else:
-                media = None
-
-            item = rfeed.Item(
-                title=tweet_title,
-                link=tweet_url,
-                description=tweet_text.replace('\n', '\n<br />'),
-                author=tweet_author_name,
-                guid=rfeed.Guid(tweet_id, isPermaLink=False),
-                pubDate=tweet.created_at,
-                enclosure=media
-            )
-
-            rss_items[tweet_id] = item
-
-    # Create the feed
-    feed = rfeed.Feed(
-        title="{}'s TwitteRSS Feed".format(user.screen_name),
-        link=rss_base_url,
-        description="{}'s TwitteRSS Feed".format(user.screen_name),
-        language="en-US",
-        lastBuildDate=datetime.datetime.now(),
-        items=rss_items.values())
-
-    # Save to S3
-    s3 = boto3.resource("s3")
-    s3.Bucket(bucket).put_object(
-        Key=folder + "/" + file_name,
-        Body=feed.rss(),
-        ACL='public-read',
-        ContentType='application/xml',
-        CacheControl='max-age=300',
-        ContentEncoding='utf-8')
-
-    print "Saved {} records to: {}{}".format(
-        len(rss_items), rss_base_url, file_name)
+        print(f"Saved {len(rss_items)} records to {rss_base_url}{file_name}")
 
     return "DONE"
