@@ -49,7 +49,7 @@ The following commands will
 * create a ZIP package for deployment. Run the following from the project directory:
 
 ```shell
-pip install -r requirements.txt -t .
+pip3 install -r requirements.txt --system -t .
 zip -r TwitteRSS.zip *
 ```
 
@@ -72,7 +72,6 @@ The feature set is pretty low at this time.  Mainly, this package will:
 There are probably more things than this, but at least the following could use some work:
 * Only request tweets that are new since the last run
 * Add filtering by the presence (or lack of) urls
-* Try to read original tweets from retweets and quotes to show the html inline instead of just a link
 
 ## Contributing
 
