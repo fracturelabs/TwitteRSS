@@ -12,18 +12,6 @@
 		"filename_salt": "<anything will do - only for uniqueness>"
 	},
 
-	"preferences": {
-		"max_items": 50,
-		"exclude_retweets": "false",
-		"require_retweets": "false",
-		"exclude_quotes": "false",
-		"require_quotes": "false",
-		"exclude_tweets_with_media": "false",
-		"require_tweets_with_media": "false",
-		"exclude_tweets_with_urls": "false",
-		"require_tweets_with_urls": "false"
-	},
-
 	"feeds": [
 		{
 			"title": "Tweets from ABC and DEF Lists",
@@ -38,9 +26,7 @@
 				"exclude_quotes": "false",
 				"require_quotes": "false",
 				"exclude_tweets_with_media": "false",
-				"require_tweets_with_media": "false",
-				"exclude_tweets_with_urls": "false",
-				"require_tweets_with_urls": "false"
+				"require_tweets_with_media": "false"
 			}
 		},
 		{
@@ -55,9 +41,7 @@
 				"exclude_quotes": "false",
 				"require_quotes": "false",
 				"exclude_tweets_with_media": "false",
-				"require_tweets_with_media": "false",
-				"exclude_tweets_with_urls": "false",
-				"require_tweets_with_urls": "false"
+				"require_tweets_with_media": "false"
 			}
 		}
 	]
