@@ -151,9 +151,13 @@ def twitterss_handler(event, context):
     access_token_secret = config['twitter']['access_token_secret']
 
     bucket = config['s3']['bucket']
-    folder = config['s3']['folder']
+    folder = config['s3']['folder'].replace("\\", "/").strip("/")
+    
+    if folder:
+        folder += "/"
+    
     filename_salt = config['s3']['filename_salt']
-    feed_base_url = f"https://s3.amazonaws.com/{bucket}/{folder}/"
+    feed_base_url = f"https://s3.amazonaws.com/{bucket}/{folder}"
 
     feeds = config['feeds']
 
@@ -256,7 +260,7 @@ def twitterss_handler(event, context):
         # Save to S3
         s3 = boto3.resource("s3")
         s3.Bucket(bucket).put_object(
-            Key=folder + "/" + file_name,
+            Key=folder + file_name,
             Body=feed_generator.atom_str(pretty=True),
             ACL='public-read',
             ContentType='application/xml',
